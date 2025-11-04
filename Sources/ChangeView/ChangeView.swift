@@ -15,9 +15,8 @@ private struct VersionEntry: Codable, Identifiable {
 }
 
 public struct WhatsNewView: View {
-    let onDismiss: () -> Void
-
-    let tintColor: Color
+    private let onDismiss: () -> Void
+    private let tintColor: Color
     
     // MARK: - Version
     private var currentVersion: String {
@@ -38,6 +37,11 @@ public struct WhatsNewView: View {
 
     private var currentEntry: VersionEntry? {
         changelog.first { $0.version == currentVersion }
+    }
+    
+    public init(onDismiss: @escaping () -> Void, tintColor: Color = .accentColor) {
+        self.onDismiss = onDismiss
+        self.tintColor = tintColor
     }
 
     // MARK: - Body
@@ -89,7 +93,7 @@ public struct WhatsNewView: View {
 
 // MARK: - Changelog Screen
 public struct ChangelogScreen: View {
-    let onClose: () -> Void
+    private let onDismiss: () -> Void
 
     // MARK: - Load changelog
     private var changelog: [VersionEntry] {
@@ -102,6 +106,10 @@ public struct ChangelogScreen: View {
         }
         // Reverse order — newest first
         return decoded.reversed()
+    }
+    
+    public init(onDismiss: @escaping () -> Void) {
+        self.onDismiss = onDismiss
     }
 
     // MARK: - View
@@ -147,7 +155,7 @@ public struct ChangelogScreen: View {
             .navigationTitle("Changelog")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onClose) {
+                    Button(action: onDismiss) {
                         Image(systemName: "xmark")
                     }
                 }
