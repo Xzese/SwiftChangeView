@@ -94,6 +94,7 @@ public struct WhatsNewView: View {
 // MARK: - Changelog Screen
 public struct ChangelogScreen: View {
     private let onDismiss: () -> Void
+    private let tintColor: Color
 
     // MARK: - Load changelog
     private var changelog: [VersionEntry] {
@@ -108,8 +109,9 @@ public struct ChangelogScreen: View {
         return decoded.reversed()
     }
     
-    public init(onDismiss: @escaping () -> Void) {
+    public init(onDismiss: @escaping () -> Void, tintColor: Color = .accentColor) {
         self.onDismiss = onDismiss
+        self.tintColor = tintColor
     }
 
     // MARK: - View
