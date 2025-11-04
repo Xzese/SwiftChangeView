@@ -57,7 +57,7 @@ public struct WhatsNewView: View {
             ScrollView {
                 if let entry = currentEntry {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("\(currentVersion) \(entry.title)")
+                        Text("\(entry.title) (\(currentVersion))")
                             .font(.title3.bold())
                             .padding(.bottom, 5)
                         
