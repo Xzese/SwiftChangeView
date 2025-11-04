@@ -15,10 +15,9 @@ internal struct VersionEntry: Codable, Identifiable {
 }
 
 // MARK: - Shared Changelog Loader
-@discardableResult
 fileprivate func loadChangelog(previewData: [VersionEntry]? = nil) -> [VersionEntry] {
     if let previewData = previewData {
-        return previewData
+        return previewData.sorted(by: compareVersions)
     }
 
     guard
@@ -29,7 +28,22 @@ fileprivate func loadChangelog(previewData: [VersionEntry]? = nil) -> [VersionEn
         return []
     }
 
-    return decoded
+    return decoded.sorted(by: compareVersions)
+}
+
+// MARK: - Version comparison helper
+private func compareVersions(_ lhs: VersionEntry, _ rhs: VersionEntry) -> Bool {
+    let lhsParts = lhs.version.split(separator: ".").compactMap { Int($0) }
+    let rhsParts = rhs.version.split(separator: ".").compactMap { Int($0) }
+
+    for i in 0..<max(lhsParts.count, rhsParts.count) {
+        let left = i < lhsParts.count ? lhsParts[i] : 0
+        let right = i < rhsParts.count ? rhsParts[i] : 0
+        if left != right {
+            return left < right
+        }
+    }
+    return false
 }
 
 public struct WhatsNewView: View {
@@ -43,12 +57,16 @@ public struct WhatsNewView: View {
     }
     
     private var currentEntry: VersionEntry? {
-        // Try to match the current app version first
-        if let match = changelog.first(where: { $0.version == currentVersion }) {
+        // Make sure changelog is sorted from lowest → highest version
+        let sortedChangelog = changelog.sorted(by: compareVersions)
+        
+        // Try to match the current app version exactly
+        if let match = sortedChangelog.first(where: { $0.version == currentVersion }) {
             return match
         }
-        // Fallback to the most recent version if version is missing or doesn't match
-        return changelog.last
+        
+        // Fallback to the latest available entry (highest version)
+        return sortedChangelog.last
     }
     
     internal init(
@@ -71,31 +89,46 @@ public struct WhatsNewView: View {
                     .font(.title3)
                     .foregroundStyle(.primary)
             }
+
             ScrollView {
                 if let entry = currentEntry {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("\(entry.title) (\(entry.version))")
-                            .font(.title3.bold())
-                            .padding(.bottom, 5)
-                        
-                        ForEach(entry.changes) { change in
-                            HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("Version \(entry.version)")
+                                    .font(.title3.bold())
+                                Spacer()
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.primary)
+                            }
+
+                            Text(entry.title)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .padding(.bottom, 4)
+
+                            ForEach(entry.changes) { change in
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(change.title)
-                                        .font(.headline)
+                                        .font(.subheadline.bold())
                                         .foregroundStyle(.primary)
                                     Text(change.description)
-                                        .font(.subheadline)
+                                        .font(.callout)
                                         .foregroundStyle(.secondary)
                                 }
+                                .padding(.vertical, 4)
                             }
                         }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(.vertical, 20)
                 } else {
                     Text("Bug fixes and performance improvements.")
                         .font(.body)
                         .foregroundStyle(.secondary)
+                        .padding()
                 }
             }
 
@@ -216,6 +249,14 @@ public struct ChangelogScreen: View {
         ),
         VersionEntry(
             version: "1.1.0",
+            title: "Enhancements",
+            changes: [
+                ChangeItem(title: "Visual Improvements", description: "Refined animations and icons."),
+                ChangeItem(title: "Bug Fixes", description: "Resolved issues for stability.")
+            ]
+        ),
+        VersionEntry(
+            version: "1.1.11",
             title: "Enhancements",
             changes: [
                 ChangeItem(title: "Visual Improvements", description: "Refined animations and icons."),
