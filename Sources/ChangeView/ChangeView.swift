@@ -196,7 +196,6 @@ public struct WhatsNewView: View {
                     }
                 }
             }
-            .presentationDetents([.medium, .large])
         }
     }
 }
