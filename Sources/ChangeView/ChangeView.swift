@@ -81,63 +81,64 @@ public struct WhatsNewView: View {
 
     // MARK: - Body
     public var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .center, spacing: 10) {
-                Text("What’s New")
-                    .font(.largeTitle.bold())
-                Image(systemName: "party.popper")
-                    .font(.title3)
-                    .foregroundStyle(.primary)
-            }
-
-            ScrollView {
-                if let entry = currentEntry {
-                    VStack(alignment: .leading, spacing: 20) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .center, spacing: 8) {
-                                Text("Version \(entry.version)")
-                                    .font(.title3.bold())
-                                Spacer()
-                                Image(systemName: "sparkles")
-                                    .foregroundStyle(.primary)
-                            }
-
-                            Text(entry.title)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                                .padding(.bottom, 4)
-
-                            ForEach(entry.changes) { change in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(change.title)
-                                        .font(.subheadline.bold())
+        NavigationStack {
+            VStack(spacing: 10) {
+                ScrollView {
+                    if let entry = currentEntry {
+                        VStack(alignment: .leading, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .center, spacing: 8) {
+                                    Text("Version \(entry.version)")
+                                        .font(.title3.bold())
+                                    Spacer()
+                                    Image(systemName: "sparkles")
                                         .foregroundStyle(.primary)
-                                    Text(change.description)
-                                        .font(.callout)
-                                        .foregroundStyle(.secondary)
                                 }
-                                .padding(.vertical, 4)
+                                
+                                Text(entry.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                    .padding(.bottom, 4)
+                                
+                                ForEach(entry.changes) { change in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(change.title)
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(.primary)
+                                        Text(change.description)
+                                            .font(.callout)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
                             }
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.vertical, 20)
+                    } else {
+                        Text("Bug fixes and performance improvements.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .padding()
                     }
-                    .padding(.vertical, 20)
-                } else {
-                    Text("Bug fixes and performance improvements.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .padding()
                 }
             }
-
-            Button("Continue") { onDismiss() }
-                .buttonStyle(.borderedProminent)
-                .tint(tintColor)
+            .padding(.horizontal)
+            .padding(.bottom, 20)
+            .presentationDetents([.fraction(0.7)])
+            .navigationTitle("What's New")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+            }
         }
-        .padding(30)
-        .presentationDetents([.fraction(0.7)])
     }
 }
 
