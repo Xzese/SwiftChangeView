@@ -50,42 +50,90 @@ public struct WhatsNewView: View {
     private let onDismiss: () -> Void
     private let tintColor: Color
     private let changelog: [VersionEntry]
-    
+    private let lastSeenVersion: String?
+
     // MARK: - Version
     private var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
-    
-    private var currentEntry: VersionEntry? {
-        // Make sure changelog is sorted from lowest → highest version
-        let sortedChangelog = changelog.sorted(by: compareVersions)
-        
-        // Try to match the current app version exactly
-        if let match = sortedChangelog.first(where: { $0.version == currentVersion }) {
-            return match
+
+    // MARK: - Filtered Entries
+    private var newEntries: [VersionEntry] {
+        let sortedAscending = changelog.sorted(by: compareVersions)
+        let sortedDescending = sortedAscending.reversed()
+
+        guard let lastSeen = lastSeenVersion,
+              !lastSeen.isEmpty,
+              lastSeen != "0",
+              let lastIndex = sortedAscending.firstIndex(where: { $0.version == lastSeen })
+        else {
+            // First launch or missing record → show all (newest first)
+            return Array(sortedDescending)
         }
-        
-        // Fallback to the latest available entry (highest version)
-        return sortedChangelog.last
+
+        // Try to match current app version or default to latest in changelog
+        let currentVersionInChangelog = sortedAscending.last?.version ?? currentVersion
+        let currentIndex = sortedAscending.firstIndex(where: { $0.version == currentVersionInChangelog }) ?? sortedAscending.endIndex - 1
+
+        // Show entries *after* last seen version (exclude it)
+        let start = sortedAscending.index(after: lastIndex)
+        if start < sortedAscending.count {
+            let range = Array(sortedAscending[start...currentIndex]).reversed()
+            return Array(range)
+        }
+
+        // If the last seen is the latest version, show nothing new
+        return []
     }
-    
+
+    // MARK: - Init
     internal init(
         onDismiss: @escaping () -> Void,
+        lastSeenVersion: String? = nil,
         tintColor: Color = .accentColor,
         changelog: [VersionEntry]? = nil
     ) {
         self.onDismiss = onDismiss
         self.tintColor = tintColor
+        self.lastSeenVersion = lastSeenVersion
         self.changelog = loadChangelog(previewData: changelog)
     }
 
     // MARK: - Body
     public var body: some View {
         NavigationStack {
-            VStack(spacing: 10) {
-                ScrollView {
-                    if let entry = currentEntry {
-                        VStack(alignment: .leading, spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if newEntries.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .center, spacing: 8) {
+                                Text("Version \(currentVersion)")
+                                    .font(.title3.bold())
+                                Spacer()
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.primary)
+                            }
+
+                            Text("Minor Improvements")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .padding(.bottom, 4)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("General Enhancements")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(.primary)
+                                Text("Bug fixes and performance improvements.")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        ForEach(newEntries) { entry in
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .center, spacing: 8) {
                                     Text("Version \(entry.version)")
@@ -94,12 +142,12 @@ public struct WhatsNewView: View {
                                     Image(systemName: "sparkles")
                                         .foregroundStyle(.primary)
                                 }
-                                
+
                                 Text(entry.title)
                                     .font(.headline)
                                     .foregroundStyle(.primary)
                                     .padding(.bottom, 4)
-                                
+
                                 ForEach(entry.changes) { change in
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(change.title)
@@ -116,28 +164,20 @@ public struct WhatsNewView: View {
                             .background(Color(.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .padding(.vertical, 20)
-                    } else {
-                        Text("Bug fixes and performance improvements.")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .padding()
                     }
                 }
+                .padding(.vertical, 20)
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 20)
-            .presentationDetents([.fraction(0.7)])
-            .navigationTitle("What's New")
+            .navigationTitle("What’s New")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        onDismiss()
-                    } label: {
+                    Button(action: onDismiss) {
                         Image(systemName: "xmark")
                     }
                 }
             }
+            .presentationDetents([.medium, .large])
         }
     }
 }
@@ -214,6 +254,7 @@ public struct ChangelogScreen: View {
 #Preview("WhatsNewView") {
     WhatsNewView(
         onDismiss: {},
+        lastSeenVersion: "1.2.0",
         changelog: [
             VersionEntry(
                 version: "1.0.0",
