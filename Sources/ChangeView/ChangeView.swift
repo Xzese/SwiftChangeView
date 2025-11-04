@@ -33,8 +33,13 @@ fileprivate func loadChangelog(previewData: [VersionEntry]? = nil) -> [VersionEn
 
 // MARK: - Version comparison helper
 private func compareVersions(_ lhs: VersionEntry, _ rhs: VersionEntry) -> Bool {
-    let lhsParts = lhs.version.split(separator: ".").compactMap { Int($0) }
-    let rhsParts = rhs.version.split(separator: ".").compactMap { Int($0) }
+    compareVersionStrings(lhs.version, rhs.version)
+}
+
+/// Returns true if `lhs` < `rhs` (e.g. "1.0.9" < "1.0.10")
+public func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool {
+    let lhsParts = lhs.split(separator: ".").compactMap { Int($0) }
+    let rhsParts = rhs.split(separator: ".").compactMap { Int($0) }
 
     for i in 0..<max(lhsParts.count, rhsParts.count) {
         let left = i < lhsParts.count ? lhsParts[i] : 0
@@ -70,24 +75,25 @@ public struct WhatsNewView: View {
             return Array(sortedDescending)
         }
 
-        // Find the most recent version in changelog
         guard let latestVersion = sortedAscending.last?.version else { return [] }
 
-        // If last seen version is *newer or equal* to the latest available
+        // If last seen version is newer or equal to latest, show nothing
         if !compareVersionStrings(lastSeen, latestVersion) || lastSeen == latestVersion {
-            // Nothing to show (already up to date)
             return []
         }
 
-        // Try to locate the last seen version index, or use the beginning if not found
-        let lastIndex = sortedAscending.firstIndex(where: { $0.version == lastSeen }) ?? -1
-
-        // Determine entries after lastSeen up to the end
-        let start = lastIndex == -1 ? 0 : sortedAscending.index(after: lastIndex)
-        guard start < sortedAscending.count else { return [] }
-
-        let newRange = Array(sortedAscending[start...]).reversed()
-        return Array(newRange)
+        // Find lastSeen index if present
+        if let lastIndex = sortedAscending.firstIndex(where: { $0.version == lastSeen }) {
+            // Return entries *after* the lastSeen version
+            let start = sortedAscending.index(after: lastIndex)
+            guard start < sortedAscending.count else { return [] }
+            return Array(sortedAscending[start...]).reversed()
+        } else {
+            // If the last seen version isn't in the changelog,
+            // find the *first* version greater than it, and show from there
+            let newerEntries = sortedAscending.filter { compareVersionStrings(lastSeen, $0.version) }
+            return Array(newerEntries.reversed())
+        }
     }
     
     /// Returns true if lhs < rhs
@@ -278,20 +284,23 @@ public struct ChangelogScreen: View {
                 version: "1.0.0",
                 title: "Initial Release",
                 changes: [
-                    ChangeItem(
-                        title: "App Launch",
-                        description: "The first release of your app — providing a fast, private, and intuitive experience with all core features available."
-                    )
+                    ChangeItem(title: "App Launch", description: "The first release of your app.")
                 ]
             ),
             VersionEntry(
                 version: "1.1.0",
-                title: "Feature and Stability Improvements",
+                title: "Enhancements",
                 changes: [
-                    ChangeItem(title: "New Feature", description: "Introduced a new feature to enhance functionality and improve the overall user experience."),
-                    ChangeItem(title: "Visual Enhancements", description: "Updated layouts, icons, and animations for a more polished and modern look."),
-                    ChangeItem(title: "Performance Improvements", description: "Optimised loading times and responsiveness across the app."),
-                    ChangeItem(title: "Bug Fixes", description: "Resolved various issues to ensure smoother operation.")
+                    ChangeItem(title: "Visual Improvements", description: "Refined animations and icons."),
+                    ChangeItem(title: "Bug Fixes", description: "Resolved issues for stability.")
+                ]
+            ),
+            VersionEntry(
+                version: "1.1.1",
+                title: "Enhancements",
+                changes: [
+                    ChangeItem(title: "Visual Improvements", description: "Refined animations and icons."),
+                    ChangeItem(title: "Bug Fixes", description: "Resolved issues for stability.")
                 ]
             )
         ]
@@ -301,7 +310,7 @@ public struct ChangelogScreen: View {
 #Preview("ChangelogScreen") {
     ChangelogScreen(onDismiss: {}, changelog: [
         VersionEntry(
-            version: "1.1.0",
+            version: "1.1.1",
             title: "Initial Release",
             changes: [
                 ChangeItem(title: "App Launch", description: "The first release of your app.")
