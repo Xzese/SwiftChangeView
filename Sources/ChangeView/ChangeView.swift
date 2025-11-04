@@ -1,20 +1,20 @@
 import SwiftUI
 
 // MARK: - Models
-struct ChangeItem: Codable, Identifiable {
+private struct ChangeItem: Codable, Identifiable {
     var id: UUID { UUID() }
     let title: String
     let description: String
 }
 
-struct VersionEntry: Codable, Identifiable {
+private struct VersionEntry: Codable, Identifiable {
     var id: UUID { UUID() }
     let version: String
     let title: String
     let changes: [ChangeItem]
 }
 
-struct WhatsNewView: View {
+public struct WhatsNewView: View {
     let onDismiss: () -> Void
 
     let tintColor: Color
@@ -41,7 +41,7 @@ struct WhatsNewView: View {
     }
 
     // MARK: - Body
-    var body: some View {
+    public var body: some View {
         VStack(spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
                 Text("What’s New")
@@ -88,7 +88,7 @@ struct WhatsNewView: View {
 }
 
 // MARK: - Changelog Screen
-struct ChangelogScreen: View {
+public struct ChangelogScreen: View {
     let onClose: () -> Void
 
     // MARK: - Load changelog
@@ -105,7 +105,7 @@ struct ChangelogScreen: View {
     }
 
     // MARK: - View
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
