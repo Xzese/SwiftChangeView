@@ -64,26 +64,45 @@ public struct WhatsNewView: View {
 
         guard let lastSeen = lastSeenVersion,
               !lastSeen.isEmpty,
-              lastSeen != "0",
-              let lastIndex = sortedAscending.firstIndex(where: { $0.version == lastSeen })
+              lastSeen != "0"
         else {
             // First launch or missing record → show all (newest first)
             return Array(sortedDescending)
         }
 
-        // Try to match current app version or default to latest in changelog
-        let currentVersionInChangelog = sortedAscending.last?.version ?? currentVersion
-        let currentIndex = sortedAscending.firstIndex(where: { $0.version == currentVersionInChangelog }) ?? sortedAscending.endIndex - 1
+        // Find the most recent version in changelog
+        guard let latestVersion = sortedAscending.last?.version else { return [] }
 
-        // Show entries *after* last seen version (exclude it)
-        let start = sortedAscending.index(after: lastIndex)
-        if start < sortedAscending.count {
-            let range = Array(sortedAscending[start...currentIndex]).reversed()
-            return Array(range)
+        // If last seen version is *newer or equal* to the latest available
+        if !compareVersionStrings(lastSeen, latestVersion) || lastSeen == latestVersion {
+            // Nothing to show (already up to date)
+            return []
         }
 
-        // If the last seen is the latest version, show nothing new
-        return []
+        // Try to locate the last seen version index, or use the beginning if not found
+        let lastIndex = sortedAscending.firstIndex(where: { $0.version == lastSeen }) ?? -1
+
+        // Determine entries after lastSeen up to the end
+        let start = lastIndex == -1 ? 0 : sortedAscending.index(after: lastIndex)
+        guard start < sortedAscending.count else { return [] }
+
+        let newRange = Array(sortedAscending[start...]).reversed()
+        return Array(newRange)
+    }
+    
+    /// Returns true if lhs < rhs
+    private func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool {
+        let lhsParts = lhs.split(separator: ".").compactMap { Int($0) }
+        let rhsParts = rhs.split(separator: ".").compactMap { Int($0) }
+
+        for i in 0..<max(lhsParts.count, rhsParts.count) {
+            let left = i < lhsParts.count ? lhsParts[i] : 0
+            let right = i < rhsParts.count ? rhsParts[i] : 0
+            if left != right {
+                return left < right
+            }
+        }
+        return false
     }
 
     // MARK: - Init
@@ -123,7 +142,7 @@ public struct WhatsNewView: View {
                                 Text("General Enhancements")
                                     .font(.subheadline.bold())
                                     .foregroundStyle(.primary)
-                                Text("Bug fixes and performance improvements.")
+                                Text("Bug fixes and improvements.")
                                     .font(.callout)
                                     .foregroundStyle(.secondary)
                             }
@@ -254,7 +273,7 @@ public struct ChangelogScreen: View {
 #Preview("WhatsNewView") {
     WhatsNewView(
         onDismiss: {},
-        lastSeenVersion: "1.2.0",
+        lastSeenVersion: "1.0.0",
         changelog: [
             VersionEntry(
                 version: "1.0.0",
@@ -283,7 +302,7 @@ public struct ChangelogScreen: View {
 #Preview("ChangelogScreen") {
     ChangelogScreen(onDismiss: {}, changelog: [
         VersionEntry(
-            version: "1.0.0",
+            version: "1.1.0",
             title: "Initial Release",
             changes: [
                 ChangeItem(title: "App Launch", description: "The first release of your app.")
