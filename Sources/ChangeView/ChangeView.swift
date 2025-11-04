@@ -7,8 +7,8 @@ internal struct ChangeItem: Codable, Identifiable {
     let description: String
 }
 
-internal struct VersionEntry: Codable, Identifiable {
-    var id: UUID { UUID() }
+public struct VersionEntry: Codable, Identifiable {
+    public var id: UUID { UUID() }
     let version: String
     let title: String
     let changes: [ChangeItem]
@@ -106,7 +106,7 @@ public struct WhatsNewView: View {
     }
 
     // MARK: - Init
-    internal init(
+    public init(
         onDismiss: @escaping () -> Void,
         lastSeenVersion: String? = nil,
         tintColor: Color = .accentColor,
