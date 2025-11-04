@@ -207,7 +207,7 @@ public struct ChangelogScreen: View {
     private let tintColor: Color
     private let changelog: [VersionEntry]
     
-    internal init(
+    public init(
         onDismiss: @escaping () -> Void,
         tintColor: Color = .accentColor,
         changelog: [VersionEntry]? = nil
