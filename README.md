@@ -33,7 +33,7 @@ The package provides two views:
 
 To present WhatsNewView automatically after a new app update:
 
-```
+```swift
 @AppStorage("lastSeenVersion") private var lastSeenVersion = ""
 @State private var showWhatsNew = false
 
@@ -50,26 +50,30 @@ var body: some View {
                     showWhatsNew = false
                     lastSeenVersion = currentVersion
                 },
-                tintColor: .accentColor
+                lastSeenVersion: lastSeenVersion,
+                tintColor: Helper.appTintColor()
             )
+            .presentationDetents([.fraction(0.7), .large])
         }
         .onAppear {
-            if lastSeenVersion != currentVersion {
+            if compareVersionStrings(lastSeenVersion, currentVersion) {
                 showWhatsNew = true
             }
         }
 }
 ```
 
-This checks whether the user has seen the current version’s “What’s New” modal.
-If not, it presents WhatsNewView and stores the version once dismissed.
+This compares the stored version with the current app version using compareVersionStrings().
+If the current version is newer, the What’s New screen automatically appears.
+
+Make sure you pass lastSeenVersion into the WhatsNewView so it knows which entries to display.
 
 ### Adding a Changelog section to Settings
 
 You can embed the full changelog anywhere in your app — for example, in a Settings or About screen:
 
 ```
-NavigationLink(destination: ChangelogScreen(onClose: { dismiss() })) {
+NavigationLink(destination: ChangelogScreen(onDismiss: { dismiss() })) {
     Label("Changelog", systemImage: "text.page.fill")
         .foregroundStyle(.primary)
 }
@@ -81,7 +85,7 @@ This presents a navigable list of all past updates.
 
 Your app must include a changelog.json file in the main bundle, following this structure:
 
-```
+```swift
 [
   {
     "version": "1.0.0",
@@ -123,7 +127,7 @@ Your app must include a changelog.json file in the main bundle, following this s
 - **Tint Colour**  
   You can pass a custom accent color when presenting the `WhatsNewView`:
 
-  ```
+  ```swift
   WhatsNewView(onDismiss: { ... }, tintColor: .blue)
   ```
 
@@ -131,6 +135,15 @@ Your app must include a changelog.json file in the main bundle, following this s
   Both views use SwiftUI and support dynamic type, dark mode, and system appearance automatically.
 
 ---
+
+## Utility Functions
+
+The package includes a helper for safely comparing semantic version strings:
+
+```swift
+/// Returns true if `lhs` < `rhs`
+public func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool
+```
 
 ## 🧰 Requirements
 
