@@ -155,8 +155,7 @@ public func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool
 
 ## ⚙️ License
 
-Free for personal and commercial use.  
-Attribution is appreciated but not required.
+SwiftChangeView is available under the [MIT License](LICENSE).
 
 ---
 
