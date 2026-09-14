@@ -1,5 +1,13 @@
 # ChangeView
 
+<p align="center">
+  <a href="https://github.com/Xzese/SwiftChangeView/stargazers"><img src="https://img.shields.io/github/stars/Xzese/SwiftChangeView?style=flat-square" alt="Stars"></a>
+  <a href="https://github.com/Xzese/SwiftChangeView/commits/main"><img src="https://img.shields.io/github/last-commit/Xzese/SwiftChangeView?style=flat-square" alt="Last commit"></a>
+  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.2+-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift"></a>
+  <a href="https://developer.apple.com/xcode/swiftui/"><img src="https://img.shields.io/badge/SwiftUI-iOS%2017+-0D96F6?style=flat-square&logo=apple&logoColor=white" alt="SwiftUI"></a>
+  <a href="https://github.com/Xzese/SwiftChangeView/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
+</p>
+
 A lightweight SwiftUI component for displaying **“What’s New”** and **Changelog** screens in your app, using a simple JSON file as the data source.
 
 ---
