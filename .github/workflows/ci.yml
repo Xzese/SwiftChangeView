@@ -1,0 +1,19 @@
+name: Package checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Public API tests
+        run: swift test
+      - name: iOS simulator build
+        run: xcodebuild -scheme ChangeView -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
