@@ -1,22 +1,22 @@
 # Package modernisation
 
-Placeholder for finishing SwiftChangeView as a small, polished reusable Swift package.
+Status: implementation started; keep this PR in draft.
 
-## Scope
-- Replace computed random UUID identities with stable model identity.
-- Define a deliberate public model API, including public construction where appropriate.
-- Remove duplicated version comparison logic.
-- Define and test the supported version-format contract, including prerelease behaviour if supported.
-- Ensure What's New only shows entries newer than the last seen version and not newer than the installed app version.
-- Apply the supplied tint configuration or remove unsupported API surface.
-- Distinguish empty changelog data from malformed/loading failures.
-- Extract repeated release-card presentation without over-engineering the package.
-- Improve accessibility and Dynamic Type behaviour.
-- Add a SwiftPM test target and CI.
-- Add a separate example consumer that imports the package through its public API.
-- Refresh README examples and add screenshots/tagged release guidance.
+## Implemented
+- Stored change identity and release identity based on the version.
+- Public models, properties and initialisers.
+- One validated numeric application-version implementation.
+- Installed-version and last-seen filtering.
+- Explicit loading, validation and empty-data behaviour.
+- Shared release-list UI and applied tint.
+- A SwiftPM test target that imports the public API.
+- Eight core tests passed on Swift 6.2.1/Linux.
+- Self-contained README example and an explicit version-format contract.
 
-## Portfolio outcome
-Produce a compact library with a clear public contract, stable behaviour, tests and a working external integration example.
+## Remaining
+- Compile and test the iOS SwiftUI views on an Apple runner.
+- Build a separate example application, not only a core consumer test.
+- Add CI, accessibility checks, Dynamic Type checks and screenshots.
+- Review navigation embedding and release/tag compatibility.
 
-No implementation is included in this placeholder PR.
+No iOS build or UI test has been claimed. The original project history and licence are unchanged.

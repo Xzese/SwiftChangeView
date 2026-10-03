@@ -1,170 +1,61 @@
 # ChangeView
 
-<p align="center">
-  <a href="https://github.com/Xzese/SwiftChangeView/stargazers"><img src="https://img.shields.io/github/stars/Xzese/SwiftChangeView?style=flat-square" alt="Stars"></a>
-  <a href="https://github.com/Xzese/SwiftChangeView/commits/main"><img src="https://img.shields.io/github/last-commit/Xzese/SwiftChangeView?style=flat-square" alt="Last commit"></a>
-  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.2+-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift"></a>
-  <a href="https://developer.apple.com/xcode/swiftui/"><img src="https://img.shields.io/badge/SwiftUI-iOS%2017+-0D96F6?style=flat-square&logo=apple&logoColor=white" alt="SwiftUI"></a>
-  <a href="https://github.com/Xzese/SwiftChangeView/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-</p>
+A small SwiftUI package for What's New and changelog screens. Requires Swift 6.2 and iOS 17 or later.
 
-A lightweight SwiftUI component for displaying **“What’s New”** and **Changelog** screens in your app, using a simple JSON file as the data source.
+## Development status
 
----
+The portfolio-modernisation branch contains a first implementation. Keep this PR in draft until the iOS simulator build, accessibility checks and consumer example are verified. Eight model/selection tests passed on Swift 6.2.1 on Linux; that does not validate SwiftUI compilation or rendering.
 
-## Overview
+## Use the public API
 
-The package provides two views:
-
-1. **`WhatsNewView`**  
-   Displays the latest version's release notes in a modal sheet when users update the app.
-
-2. **`ChangelogScreen`**  
-   Displays the full changelog in a scrollable, sectioned list (perfect for embedding in Settings or an About screen).
-
----
-
-## Installation
-
-1. Add the package to your project (local or remote).  
-2. Import the library where needed:
-
-   ```swift
-   import ChangeView
-   ```
-3. Make sure your main app target includes a changelog.json file in the app bundle.
-
-
-## Usage
-
-### Showing the “What’s New” prompt automatically
-
-To present WhatsNewView automatically after a new app update:
+Add this repository as a Swift package dependency. Import `ChangeView`.
 
 ```swift
-@AppStorage("lastSeenVersion") private var lastSeenVersion = ""
-@State private var showWhatsNew = false
+import SwiftUI
+import ChangeView
 
-private var currentVersion: String {
-    Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
-}
-
-var body: some View {
-    // Your main app view
-    ContentView()
-        .sheet(isPresented: $showWhatsNew) {
-            WhatsNewView(
-                onDismiss: {
-                    showWhatsNew = false
-                    lastSeenVersion = currentVersion
-                },
-                lastSeenVersion: lastSeenVersion,
-                tintColor: Helper.appTintColor()
-            )
-            .presentationDetents([.fraction(0.7), .large])
-        }
-        .onAppear {
-            if compareVersionStrings(lastSeenVersion, currentVersion) {
-                showWhatsNew = true
-            }
-        }
+struct ReleaseNotesExample: View {
+    var body: some View {
+        WhatsNewView(
+            onDismiss: {},
+            lastSeenVersion: "1.0",
+            changelog: [
+                VersionEntry(
+                    version: "1.1",
+                    title: "Library updates",
+                    changes: [
+                        ChangeItem(title: "Search", description: "Find a book by its title.")
+                    ]
+                )
+            ],
+            currentVersion: "1.1"
+        )
+    }
 }
 ```
 
-This compares the stored version with the current app version using compareVersionStrings().
-If the current version is newer, the What’s New screen automatically appears.
+In an application, use `onDismiss` to close the sheet and save the installed version as the last seen version. The explicit `currentVersion` above makes the example independent of bundle metadata. In production it defaults to `CFBundleShortVersionString`.
 
-Make sure you pass lastSeenVersion into the WhatsNewView so it knows which entries to display.
+Without the `changelog` argument, both views load `changelog.json` from the supplied bundle (default: the main bundle). Use `Changelog.load`, `Changelog.decode` or `Changelog.validate` to receive detailed errors before creating a view.
 
-### Adding a Changelog section to Settings
-
-You can embed the full changelog anywhere in your app — for example, in a Settings or About screen:
-
-```
-NavigationLink(destination: ChangelogScreen(onDismiss: { dismiss() })) {
-    Label("Changelog", systemImage: "text.page.fill")
-        .foregroundStyle(.primary)
-}
+```json
+[{"version":"1.1","title":"Library updates","changes":[{"title":"Search","description":"Find a book by its title."}]}]
 ```
 
-This presents a navigable list of all past updates.
+## Contract
 
-## JSON Format
+Versions are dot-separated non-negative integers, not full Semantic Versioning. Prerelease and build suffixes are rejected. Trailing zero components compare equally; duplicate equivalent versions are rejected. `AppVersion` provides throwing validation. The existing `compareVersionStrings` helper returns false for invalid input and treats an empty last-seen value as zero.
 
-Your app must include a changelog.json file in the main bundle, following this structure:
+What's New displays only `lastSeenVersion < entry.version <= currentVersion`, newest first. A missing or empty last-seen value shows all entries through the installed version. ChangelogScreen shows the complete validated changelog.
 
-```swift
-[
-  {
-    "version": "1.0.0",
-    "title": "Initial Release",
-    "changes": [
-      {
-        "title": "App Launch",
-        "description": "The first release of your app — providing a fast, private, and intuitive experience with all core features available."
-      }
-    ]
-  },
-  {
-    "version": "1.1.0",
-    "title": "Feature and Stability Improvements",
-    "changes": [
-      {
-        "title": "New Feature",
-        "description": "Introduced a new feature to enhance functionality and improve the overall user experience."
-      },
-      {
-        "title": "Visual Enhancements",
-        "description": "Updated layouts, icons, and animations for a more polished and modern look."
-      },
-      {
-        "title": "Performance Improvements",
-        "description": "Optimised loading times and responsiveness across the app."
-      },
-      {
-        "title": "Bug Fixes",
-        "description": "Resolved various issues to ensure smoother operation."
-      }
-    ]
-  }
-]
-```
+Change IDs are stored once, not regenerated on every property access. Legacy JSON without IDs receives IDs on decoding; include explicit UUID IDs when identity must remain stable across repeated reloads. VersionEntry uses its version string as identity. Duplicate IDs within a release are rejected.
 
-## Customisation
+Both views apply the supplied tint. Empty data and invalid data show different messages; the package no longer invents release notes when loading fails.
 
-- **Tint Colour**  
-  You can pass a custom accent color when presenting the `WhatsNewView`:
+## Tests
 
-  ```swift
-  WhatsNewView(onDismiss: { ... }, tintColor: .blue)
-  ```
+Run `swift test` for model, decoding and version-selection tests. These tests import the public module without `@testable`. SwiftUI views are compiled only for iOS. An iOS simulator build remains a required release check.
 
-- **Layout Adjustments**  
-  Both views use SwiftUI and support dynamic type, dark mode, and system appearance automatically.
+## Licence
 
----
-
-## Utility Functions
-
-The package includes a helper for safely comparing semantic version strings:
-
-```swift
-/// Returns true if `lhs` < `rhs`
-public func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool
-```
-
-## 🧰 Requirements
-
-- iOS 17.0+  
-- Swift 6.2+  
-- SwiftUI framework
-
----
-
-## ⚙️ License
-
-SwiftChangeView is available under the [MIT License](LICENSE).
-
----
-
-**ChangelogView** makes it easy to show users what’s new — automatically and consistently, every release.
+The existing MIT licence is unchanged. See LICENSE.
