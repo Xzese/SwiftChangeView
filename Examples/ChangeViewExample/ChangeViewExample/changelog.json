@@ -1,0 +1,20 @@
+[
+  {
+    "version": "1.2",
+    "title": "Coming soon",
+    "changes": [{"title": "Future release", "description": "This entry appears in the full changelog, but not What's New on version 1.1."}]
+  },
+  {
+    "version": "1.1",
+    "title": "A clearer reading experience",
+    "changes": [
+      {"title": "Find your next book", "description": "Search your library by title and author, with results that update as you type."},
+      {"title": "Comfortable at every size", "description": "Release notes follow your preferred text size and appearance."}
+    ]
+  },
+  {
+    "version": "1.0",
+    "title": "Welcome to your library",
+    "changes": [{"title": "Your books, together", "description": "Keep track of the books you want to read and the stories you have enjoyed."}]
+  }
+]

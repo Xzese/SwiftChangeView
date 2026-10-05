@@ -15,22 +15,36 @@ public struct ChangeItem: Codable, Identifiable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        // Older decoders ignored id metadata of any type.
+        id = (try? values.decode(UUID.self, forKey: .id)) ?? UUID()
         title = try values.decode(String.self, forKey: .title)
         description = try values.decode(String.self, forKey: .description)
     }
 }
 
 public struct VersionEntry: Codable, Identifiable, Equatable, Sendable {
-    public var id: String { version }
+    /// Stored identity preserves the original public UUID type.
+    public let id: UUID
     public let version: String
     public let title: String
     public let changes: [ChangeItem]
 
-    public init(version: String, title: String, changes: [ChangeItem]) {
+    public init(version: String, title: String, changes: [ChangeItem], id: UUID = UUID()) {
+        self.id = id
         self.version = version
         self.title = title
         self.changes = changes
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, version, title, changes }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        // Older decoders ignored id metadata of any type.
+        id = (try? values.decode(UUID.self, forKey: .id)) ?? UUID()
+        version = try values.decode(String.self, forKey: .version)
+        title = try values.decode(String.self, forKey: .title)
+        changes = try values.decode([ChangeItem].self, forKey: .changes)
     }
 }
 
@@ -38,12 +52,26 @@ public enum ChangelogError: Error, Equatable {
     case missingResource
     case invalidVersion(String)
     case duplicateVersion(String)
+    case duplicateReleaseID
     case duplicateChangeID(String)
+}
+
+public enum ChangelogValidation: Sendable {
+    /// Retains the original views' permissive numeric-component parsing.
+    case compatible
+    /// Rejects malformed versions, equivalent releases and duplicate IDs.
+    case strict
 }
 
 /// Numeric application versions only. Prerelease and build suffixes are rejected.
 public struct AppVersion: Comparable, Hashable, Sendable {
     private let parts: [Int]
+
+    // The original helper skipped components Int could not parse. Keep its
+    // parsing contract separate from validation, sharing the ordering below.
+    fileprivate init(legacy value: String) {
+        parts = value.split(separator: ".").compactMap { Int($0) }
+    }
 
     public init(_ value: String) throws {
         let pieces = value.split(separator: ".", omittingEmptySubsequences: false)
@@ -67,31 +95,40 @@ public struct AppVersion: Comparable, Hashable, Sendable {
     }
 }
 
-/// Compatibility helper. An empty last-seen value means version zero.
-/// Invalid non-empty input returns false; use AppVersion for throwing validation.
+/// Returns true if lhs < rhs, preserving the original permissive parsing.
+/// Empty input compares as zero; unparseable components are skipped.
+/// Use AppVersion or Changelog for strict numeric-version validation.
 public func compareVersionStrings(_ lhs: String, _ rhs: String) -> Bool {
-    guard let left = try? AppVersion(lhs.isEmpty ? "0" : lhs),
-          let right = try? AppVersion(rhs) else { return false }
-    return left < right
+    AppVersion(legacy: lhs) < AppVersion(legacy: rhs)
 }
 
 public enum Changelog {
-    public static func decode(_ data: Data) throws -> [VersionEntry] {
-        try validate(JSONDecoder().decode([VersionEntry].self, from: data))
+    public static func decode(_ data: Data, validation: ChangelogValidation = .strict) throws -> [VersionEntry] {
+        try prepare(JSONDecoder().decode([VersionEntry].self, from: data), validation: validation)
     }
 
-    public static func load(bundle: Bundle = .main) throws -> [VersionEntry] {
+    public static func load(bundle: Bundle = .main, validation: ChangelogValidation = .strict) throws -> [VersionEntry] {
         guard let url = bundle.url(forResource: "changelog", withExtension: "json")
         else { throw ChangelogError.missingResource }
-        return try decode(Data(contentsOf: url))
+        return try decode(Data(contentsOf: url), validation: validation)
+    }
+
+    static func prepare(_ entries: [VersionEntry], validation: ChangelogValidation) throws -> [VersionEntry] {
+        switch validation {
+        case .strict: return try validate(entries)
+        case .compatible: return entries.sorted { compareVersionStrings($1.version, $0.version) }
+        }
     }
 
     public static func validate(_ entries: [VersionEntry]) throws -> [VersionEntry] {
         var versions = Set<AppVersion>()
+        var releaseIDs = Set<UUID>()
         for entry in entries {
             let version = try AppVersion(entry.version)
             guard versions.insert(version).inserted
             else { throw ChangelogError.duplicateVersion(entry.version) }
+            guard releaseIDs.insert(entry.id).inserted
+            else { throw ChangelogError.duplicateReleaseID }
             guard Set(entry.changes.map(\.id)).count == entry.changes.count
             else { throw ChangelogError.duplicateChangeID(entry.version) }
         }
@@ -99,13 +136,18 @@ public enum Changelog {
     }
 
     public static func entriesToShow(
-        _ entries: [VersionEntry], lastSeenVersion: String?, currentVersion: String
+        _ entries: [VersionEntry], lastSeenVersion: String?, currentVersion: String,
+        validation: ChangelogValidation = .strict
     ) throws -> [VersionEntry] {
-        let current = try AppVersion(currentVersion)
-        let last = try lastSeenVersion.flatMap { $0.isEmpty ? nil : try AppVersion($0) }
-        return try validate(entries).filter {
-            let version = try AppVersion($0.version)
-            return version <= current && (last.map { version > $0 } ?? true)
+        if validation == .strict {
+            _ = try AppVersion(currentVersion)
+            if let lastSeenVersion, !lastSeenVersion.isEmpty { _ = try AppVersion(lastSeenVersion) }
+        }
+        // "0" was also used as a first-launch sentinel by the original views.
+        let last = lastSeenVersion.flatMap { $0.isEmpty || $0 == "0" ? nil : $0 }
+        return try prepare(entries, validation: validation).filter { entry in
+            !compareVersionStrings(currentVersion, entry.version)
+                && (last.map { compareVersionStrings($0, entry.version) } ?? true)
         }
     }
 }

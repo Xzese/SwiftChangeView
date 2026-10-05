@@ -1,6 +1,8 @@
 name: Package checks
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -10,10 +12,45 @@ permissions:
 jobs:
   package:
     runs-on: macos-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
       - name: Public API tests
         run: swift test
       - name: iOS simulator build
         run: xcodebuild -scheme ChangeView -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - name: Select an available iPhone simulator
+        run: |
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/devices.json"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ['RUNNER_TEMP'] + '/devices.json') as f:
+              devices = json.load(f)['devices']
+          for runtime in sorted(devices, reverse=True):
+              if '.iOS-' not in runtime:
+                  continue
+              iphones = [d for d in devices[runtime] if d['name'].startswith('iPhone') and d['isAvailable']]
+              if iphones:
+                  with open(os.environ['GITHUB_ENV'], 'a') as f:
+                      f.write('SIMULATOR_ID=' + iphones[0]['udid'] + '\n')
+                  break
+          else:
+              raise SystemExit('No available iPhone simulator')
+          PY
+      - name: External consumer UI tests
+        run: |
+          xcodebuild -project Examples/ChangeViewExample/ChangeViewExample.xcodeproj \
+            -scheme ChangeViewExample -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -resultBundlePath TestResults/Example.xcresult \
+            -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
+      - name: Save UI test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: consumer-ui-results
+          path: TestResults
+          if-no-files-found: ignore
